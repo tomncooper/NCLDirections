@@ -3,10 +3,11 @@ import csv
 import time
 import datetime
 
-def get_dist_duration(start, end, api_key):
+def get_dist_duration(UniqueID, start, end, api_key):
     """ Gets distance and duration of a journey between start and end postcodes for driving, cycling and walking.
     
     Arguements:
+        UniqueID - String - The unique ID number for this postcode start-end pair
         start - String - Origin postcode
         end - String - Destination postcode
         api_key - String - The google_api key to be used for the request
@@ -33,6 +34,7 @@ def get_dist_duration(start, end, api_key):
     values = dict()
 
     #Add the start and end post codes to the values dictionary
+    values["UniqueID"] = UniqueID
     values["Origin Postcode"] = start
     values["Destination Postcode"] = end
 
@@ -174,10 +176,11 @@ def get_transit_details(start, end, api_key, departure_time = None):
 
     return values
 
-def get_direction_data(start, end, api_key, depature_time = None):
+def get_direction_data(UniqueID, start, end, api_key, depature_time = None):
     """ Gets direction information (see dictionary keys) for various transport methods between the supplied start and end postcodes. This method assumes no intermediat waypoints and uses the 1st returned route. 
     
     Arguements:
+        UniqueID - String - The unique ID number for this postcode start-end pair
         start - String - Origin postcode
         end - String - Destination postcode
         api_key - String - The google_api key to be used for the request
@@ -203,7 +206,7 @@ def get_direction_data(start, end, api_key, depature_time = None):
     """
     
     #Get the indervidual dictionaries for the different transport modes
-    vals = get_dist_duration(start, end, api_key)
+    vals = get_dist_duration(UniqueID, start, end, api_key)
     trans = get_transit_details(start, end, api_key, depature_time)
     
     #Combine them into one dictionary
@@ -222,7 +225,7 @@ def write_to_csv(filename, rows):
     #Open the output csv file for as long as it is needed
     with open(filename, 'wb') as csvfile:
         #Set the header list
-        fieldnames = ["Origin Postcode", "Destination Postcode", "Driving Distance (m)", "Driving Duration (sec)","Bicycling Distance (m)", "Bicycling Duration (sec)", "Walking Distance (m)", "Walking Duration (sec)", "Transit Distance (m)", "Transit Duration (sec)", "Number of Transit Nodes", "Walking Distance to 1st stop (m)", "Walking Distance from last stop (m)", "Total Walking Distance (m)"]
+        fieldnames = ["UniqueID", "Origin Postcode", "Destination Postcode", "Driving Distance (m)", "Driving Duration (sec)","Bicycling Distance (m)", "Bicycling Duration (sec)", "Walking Distance (m)", "Walking Duration (sec)", "Transit Distance (m)", "Transit Duration (sec)", "Number of Transit Nodes", "Walking Distance to 1st stop (m)", "Walking Distance from last stop (m)", "Total Walking Distance (m)"]
         
         #Create the writer object
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

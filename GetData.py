@@ -28,7 +28,7 @@ total = len(inputs)
 #Get a directions dictionary for each set of postcodes and save them to the results 
 for i, item in enumerate(inputs):
     print "Processing id: {} ({} of {})".format(item["UniqueID"], i+1, total) 
-    results.append(get_direction_data(item["OriginPostcode"], item["DestinationPostcode"], api_key, departure_time))
+    results.append(get_direction_data(item["UniqueID"], item["OriginPostcode"], item["DestinationPostcode"], api_key, departure_time))
 
 #Save all the results to the CSV file
 write_to_csv(output_filename, results)
