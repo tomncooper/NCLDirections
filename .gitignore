@@ -1,3 +1,7 @@
+#Project Specific Files
+Settings.cfg
+Data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
