@@ -2,6 +2,7 @@ import requests
 import csv
 import time
 import datetime
+import os.path
 
 def get_dist_duration(UniqueID, start, end, api_key):
     """ Gets distance and duration of a journey between start and end postcodes for driving, cycling and walking.
@@ -215,27 +216,19 @@ def get_direction_data(UniqueID, start, end, api_key, depature_time = None):
     
     return data
 
-def write_to_csv(filename, rows):
+def write_to_csv(filename, row):
     """ Writes a list of direction results to a csv file.
     
     Arguements:
         filename - String - name of the file to write the results too.
-        rows - iterable - A list of dictionaries containing the direction results for each post code pair
+        row - dictionary - dictionary containing the direction results for a post code pair
     """
-    #Open the output csv file for as long as it is needed
-    with open(filename, 'wb') as csvfile:
-        #Set the header list
-        fieldnames = ["UniqueID", "Origin Postcode", "Destination Postcode", "Driving Distance (m)", "Driving Duration (sec)","Bicycling Distance (m)", "Bicycling Duration (sec)", "Walking Distance (m)", "Walking Duration (sec)", "Transit Distance (m)", "Transit Duration (sec)", "Number of Transit Nodes", "Walking Distance to 1st stop (m)", "Walking Distance from last stop (m)", "Total Walking Distance (m)"]
+    #Check if the file already exists
+    if os.path.exists(filename):
+        exists = True
+    else:
+        exists = False
         
-        #Create the writer object
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        
-        #Write the header to the file
-        writer.writeheader()
-
-        #Write all the dictionaries to the csv file
-        writer.writerows(rows)
-
 def read_postcode_csv(filename):
     """ Reads a csv file and returns a list of dictionary objects with the column headers as keys.
     
