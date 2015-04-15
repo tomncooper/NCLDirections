@@ -1,6 +1,7 @@
 import requests
 import csv
 import time
+import pytz
 import datetime
 import re
 
@@ -82,8 +83,12 @@ def get_departure_time(departure_time, weekday = 2):
     Returns:
         Integer - The number of seconds since the epoch (midnight 01/01/1970) to the next suplied weekday at the provided time
     """
-    #Get a datetime object for now
-    now = datetime.datetime.now()
+
+    #Create a time zone information object
+    bst = pytz.timezone('Europe/London')
+
+    #Get a datetime object for now in the timezone defined above
+    now = datetime.datetime.now(bst)
 
     #Calculate the number of days ahead of the required day of the week we are
     days_ahead = weekday - now.weekday()
@@ -103,7 +108,7 @@ def get_departure_time(departure_time, weekday = 2):
     new_date = next_weekday.replace(hour=hour, minute=minutes, second=seconds)
 
     #Get a datetime object for the epoch
-    epoch = datetime.datetime(1970,1,1)
+    epoch = datetime.datetime(year = 1970, month = 1, day = 1, minute = 0, second = 0, tzinfo = bst)
 
     #Get the difference between the new date and the epoch in seconds
     dt_secs = int((new_date - epoch).total_seconds())
