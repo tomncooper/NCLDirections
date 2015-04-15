@@ -29,7 +29,7 @@ def get_dist_duration(UniqueID, start, end, api_key):
     modes = ('driving', 'bicycling', 'walking')
 
     #Set up a list containing the column header names for each of the distance and duration values to be added as keys to the values dictionary
-    colnames = (("Driving Distance (m)","Driving Duration (sec)"),("Bicycling Distance (m)", "Bicycling Duration (sec)"),("Walking Distance (m)", "Walking Duration (sec)"))
+    colnames = (("Driving Distance (m)","Driving Duration (sec)", "Driving request status"),("Bicycling Distance (m)", "Bicycling Duration (sec)", "Bicycling request status"),("Walking Distance (m)", "Walking Duration (sec)", "Walking request status"))
 
     #The dictionary that will store distance and duration for the start and end postcodes supplied for each travel mode
     values = dict()
@@ -47,14 +47,25 @@ def get_dist_duration(UniqueID, start, end, api_key):
 
         #If the request is not successful print an error
         if r.status_code != 200:
-            print "Request error"
+            print "Request network error"
         else:
-            #If request is successful, turn the returned JSON string into a dictionary and get first leg of first routes - this makes leg a dictionary
-            leg = r.json().get('routes')[0].get('legs')[0]
-            #Adds distance of leg to values dictionary using value of distance from distance dictionary which is in the leg dictionary
-            values[colnames[i][0]] = leg.get('distance').get('value')
-            #Adds duration of leg to values dictionary using value of duration from duration dictionary which is in the leg dictionary
-            values[colnames[i][1]] = leg.get('duration').get('value')
+            #For every request there is an associated status - turn the returned JSON string into a dictionary
+            result = r.json()
+            #Get the status string and print it to the console
+            status = result.get('status')
+            print colnames[i][2] + ": " + status
+
+            #If the request went through ok then add the results to the values dictionary
+            if status == "OK":
+                #Get first leg of first routes - this makes leg a dictionary
+                leg = result.get('routes')[0].get('legs')[0]
+                #Adds distance of leg to values dictionary using value of distance from distance dictionary which is in the leg dictionary
+                values[colnames[i][0]] = leg.get('distance').get('value')
+                #Adds duration of leg to values dictionary using value of duration from duration dictionary which is in the leg dictionary
+                values[colnames[i][1]] = leg.get('duration').get('value')
+
+            #Add the status to the output
+            values[colnames[i][2]] = status
 
         #Sleep for half a second to prevent overloading the API
         time.sleep(0.5)
@@ -69,7 +80,7 @@ def get_departure_time(departure_time, weekday = 2):
         weekday - Integer - The day of the week to set the datetime object to. Monday = 0, Sunday = 6
 
     Returns:
-        Integer - The number of seconds since the epoch (midnight 01/01/1970) to the next monday at the provided time
+        Integer - The number of seconds since the epoch (midnight 01/01/1970) to the next suplied weekday at the provided time
     """
     #Get a datetime object for now
     now = datetime.datetime.now()
@@ -80,8 +91,6 @@ def get_departure_time(departure_time, weekday = 2):
     #If we have passed the required day of the week increase the days ahead to account for this
     if days_ahead <= 0 :
         days_ahead = days_ahead + 7
-
-    #Get a datetime object for the next required weekday
     next_weekday = now + datetime.timedelta(days=days_ahead)
 
     #Get the hours minutes and seconds from the depature time string
@@ -138,39 +147,50 @@ def get_transit_details(start, end, api_key, departure_time = None):
     if r.status_code != 200:
         print "Request Error"
     else:
-        #Get the 1st leg of the 1st route
-        leg = r.json().get('routes')[0].get('legs')[0]
-        #Add the total distance and duration to the values dictionary
-        values["Transit Distance (m)"] = leg.get('distance').get('value')
-        values["Transit Duration (sec)"] = leg.get('duration').get('value')
+        #For every request there is an associated status - turn the returned JSON string into a dictionary
+        result = r.json()
+        #Get the status string and print it to the console
+        status = result.get('status')
+        print "Transit Status: " + status
 
-        #Get the steps for this transit direction - returns list of step objects
-        steps = leg.get('steps')
+        #Add the Transit status to the values dictionary
+        values["Transit Request Status"] = status
 
-        #Add the number of nodes in the transit directions by getting length of steps array
-        values["Number of Transit Nodes"] = len(steps)
+        if status == "OK":
+            #Get the 1st leg of the 1st route
+            leg = result.get('routes')[0].get('legs')[0]
+            #Add the total distance and duration to the values dictionary
+            values["Transit Distance (m)"] = leg.get('distance').get('value')
+            values["Transit Duration (sec)"] = leg.get('duration').get('value')
 
-        #Get the walking distance for the 1st and last nodes. Uses -1 because zero indexed. If the 1st and last steps are not walking then add 0 to indicate negligble walking
-        if steps[0].get('travel_mode') == 'WALKING':
-            values["Walking Distance to 1st stop (m)"] = steps[0].get('distance').get('value')
-        else:
-            values["Walking Distance to 1st stop (m)"] = 0.0
 
-        if steps[len(steps)-1].get('travel_mode') == 'WALKING':
-            values["Walking Distance from last stop (m)"] = steps[len(steps)-1].get('distance').get('value')
-        else:
-            values["Walking Distance from last stop (m)"] = 0.0
+            #Get the steps for this transit direction - returns list of step objects
+            steps = leg.get('steps')
 
-        #Calculate TOTAL walking distance involved in transit route. Start by setting the total walking distance to zero.
-        walking_dist = 0.0
+            #Add the number of nodes in the transit directions by getting length of steps array
+            values["Number of Transit Nodes"] = len(steps)
 
-        #For each step that Google labels as "WALKING" add the distance to the prior total walking from above.
-        for step in steps:
-            if step.get('travel_mode') == 'WALKING':
-                walking_dist = walking_dist + step.get('distance').get('value')
+            #Get the walking distance for the 1st and last nodes. Uses -1 because zero indexed. If the 1st and last steps are not walking then add 0 to indicate negligble walking
+            if steps[0].get('travel_mode') == 'WALKING':
+                values["Walking Distance to 1st stop (m)"] = steps[0].get('distance').get('value')
+            else:
+                values["Walking Distance to 1st stop (m)"] = 0.0
 
-        #Add the total walking distance
-        values["Total Walking Distance (m)"] = walking_dist
+            if steps[len(steps)-1].get('travel_mode') == 'WALKING':
+                values["Walking Distance from last stop (m)"] = steps[len(steps)-1].get('distance').get('value')
+            else:
+                values["Walking Distance from last stop (m)"] = 0.0
+
+            #Calculate TOTAL walking distance involved in transit route. Start by setting the total walking distance to zero.
+            walking_dist = 0.0
+
+            #For each step that Google labels as "WALKING" add the distance to the prior total walking from above.
+            for step in steps:
+                if step.get('travel_mode') == 'WALKING':
+                    walking_dist = walking_dist + step.get('distance').get('value')
+
+            #Add the total walking distance
+            values["Total Walking Distance (m)"] = walking_dist
 
     #Sleep for half a second to prevent overloading the API
     time.sleep(0.5)
@@ -216,19 +236,6 @@ def get_direction_data(UniqueID, start, end, api_key, depature_time = None):
 
     return data
 
-def write_to_csv(filename, row):
-    """ Writes a list of direction results to a csv file.
-
-    Arguements:
-        filename - String - name of the file to write the results too.
-        row - dictionary - dictionary containing the direction results for a post code pair
-    """
-    #Check if the file already exists
-    if os.path.exists(filename):
-        exists = True
-    else:
-        exists = False
-
 def read_postcode_csv(filename):
     """ Reads a csv file and returns a list of dictionary objects with the column headers as keys.
 
@@ -264,3 +271,25 @@ def check_postcode(postcode):
         return True
     else:
         return False
+
+def get_directions(input_data, api_key, departure_time):
+
+    #Get the directions results from the api
+    origin = input_data["OriginPostcode"]
+    destination = input_data["DestinationPostcode"]
+
+    #Check the post codes and if both are fine submit to the api if not insert "Not Valid"
+    if check_postcode(origin) and check_postcode(destination):
+        result = get_direction_data(input_data["UniqueID"], origin, destination, api_key, departure_time)
+        result["Postcode Status"] = "OK"
+    elif check_postcode(origin) and not check_postcode(destination):
+        result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Destination Invalid"}
+        print "Error: Invalid Destination Postcode"
+    elif not check_postcode(origin) and check_postcode(destination):
+        result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Origin Invalid"}
+        print "Error: Invalid Origin Postcode"
+    else:
+        result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Destination and Origin Invalid"}
+        print "Error: Invalid Origin and Destination Postcode"
+
+    return result

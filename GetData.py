@@ -26,7 +26,7 @@ total = len(inputs)
 with open(output_filename, 'wb') as csvfile:
 
     #Set the header list
-    fieldnames = ["UniqueID", "Origin Postcode", "Destination Postcode", "Driving Distance (m)", "Driving Duration (sec)","Bicycling Distance (m)", "Bicycling Duration (sec)", "Walking Distance (m)", "Walking Duration (sec)", "Transit Distance (m)", "Transit Duration (sec)", "Number of Transit Nodes", "Walking Distance to 1st stop (m)", "Walking Distance from last stop (m)", "Total Walking Distance (m)"]
+    fieldnames = ["UniqueID", "Origin Postcode", "Destination Postcode", "Driving Distance (m)","Driving Duration (sec)", "Driving request status", "Bicycling Distance (m)", "Bicycling Duration (sec)", "Bicycling request status", "Walking Distance (m)", "Walking Duration (sec)", "Walking request status", "Transit Request Status", "Transit Distance (m)", "Transit Duration (sec)", "Number of Transit Nodes", "Walking Distance to 1st stop (m)", "Walking Distance from last stop (m)", "Total Walking Distance (m)","Postcode Status"]
 
     #Create the writer object
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, restval='NA')
@@ -38,19 +38,5 @@ with open(output_filename, 'wb') as csvfile:
     for i, item in enumerate(inputs):
         print "Processing id: {} ({} of {})".format(item["UniqueID"], i+1, total)
 
-        #Get the directions results from the api
-        origin = item["OriginPostcode"]
-        destination = item["DestinationPostcode"]
-
-        #Check the post codes and if both are fine submit to the api if not insert "Not Valid"
-        if check_postcode(origin) and check_postcode(destination):
-            result = get_direction_data(item["UniqueID"], origin, destination, api_key, departure_time)
-        elif check_postcode(origin) and not check_postcode(destination):
-            result = {"UniqueID":item["UniqueID"], "Origin Postcode":item["Origin Postcode"], "Destination Postcode":"Not Valid"}
-        elif not check_postcode(origin) and check_postcode(destination):
-            result = {"UniqueID":item["UniqueID"], "Origin Postcode":"Not Valid", "Destination Postcode":item["Destination Postcode"]}
-        else:
-            result = {"UniqueID":item["UniqueID"], "Origin Postcode":"Not Valid", "Destination Postcode":"Not Valid"}
-
         #Write the dictionary to the csv file
-        writer.writerow(result)
+        writer.writerow(get_directions(item, api_key, departure_time))
