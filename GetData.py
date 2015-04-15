@@ -13,10 +13,10 @@ api_key = config.get('API', 'key')
 input_filename = config.get('Files', 'input')
 output_filename = config.get('Files', 'output')
 
-#Set the depature time for transit directions
-departure_time = get_departure_time("08:00:00")
+#Set the depature time for transit directions using the time and weekday from teh settings file
+departure_time = get_departure_time(config.get('Time', 'time'), config.getint('Time', 'day'))
 
-#Get a list of dictionaries containing the start and destination postcodes
+#Get a list of dictionaries containing the start and destination postcodes from the input file
 inputs = read_postcode_csv(input_filename)
 
 #Get the total number of items for use in the console output
