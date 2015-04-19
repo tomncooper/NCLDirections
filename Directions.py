@@ -5,7 +5,27 @@ import pytz
 import datetime
 import re
 
-def get_dist_duration(UniqueID, start, end, api_key):
+def get_waypoint_string(waypoints):
+    """ Creates a string of postcodes seperated by pipes (|) from the supplied list of postcodes
+
+    Arguments:
+        waypoints - Iterable - containing postcode strings
+
+    Returns:
+        String of postcodes seperated by pipes (|)
+    """
+
+    wps = ""
+
+    for i, wp in enumerate(waypoints):
+        if i == 0:
+            wps = wps + wp
+        else:
+            wps = wps + "|" + wp
+
+    return wps
+
+def get_dist_duration(UniqueID, start, end, api_key, waypoints = None):
     """ Gets distance and duration of a journey between start and end postcodes for driving, cycling and walking.
 
     Arguements:
@@ -13,6 +33,7 @@ def get_dist_duration(UniqueID, start, end, api_key):
         start - String - Origin postcode
         end - String - Destination postcode
         api_key - String - The google_api key to be used for the request
+        waypoints - Iterable - Containing a list of intermediate waypoint postcodes
 
     Returns:
         A dictionary containing the origin and destination postcodes and the distance and duration for each mode of transport
@@ -43,14 +64,17 @@ def get_dist_duration(UniqueID, start, end, api_key):
     #Cycle through the transport modes and get the directions for each
     for i, mode in enumerate(modes):
 
-        #Make the request to the Google Directions API
-        r = requests.get('https://maps.googleapis.com/maps/api/directions/json?origin={}&destination={}&mode={}&key={}'.format(start, end, mode, api_key))
+        #Make the appropriate request, depending on weather waypoints are needed, to the Google Directions API
+        if waypoints:
+            r = requests.get('https://maps.googleapis.com/maps/api/directions/json?origin={}&destination={}&waypoints={}&mode={}&key={}'.format(start, end, get_waypoint_string(waypoints), mode, api_key))
+        else:
+            r = requests.get('https://maps.googleapis.com/maps/api/directions/json?origin={}&destination={}&mode={}&key={}'.format(start, end, mode, api_key))
 
-        #If the request is not successful print an error
+        #If the request is not successful print an error and do no further processing for this record
         if r.status_code != 200:
             print "Request network error"
         else:
-            #For every request there is an associated status - turn the returned JSON string into a dictionary
+            #Turn the returned JSON string into a dictionary
             result = r.json()
             #Get the status string and print it to the console
             status = result.get('status')
@@ -58,12 +82,23 @@ def get_dist_duration(UniqueID, start, end, api_key):
 
             #If the request went through ok then add the results to the values dictionary
             if status == "OK":
-                #Get first leg of first routes - this makes leg a dictionary
-                leg = result.get('routes')[0].get('legs')[0]
-                #Adds distance of leg to values dictionary using value of distance from distance dictionary which is in the leg dictionary
-                values[colnames[i][0]] = leg.get('distance').get('value')
-                #Adds duration of leg to values dictionary using value of duration from duration dictionary which is in the leg dictionary
-                values[colnames[i][1]] = leg.get('duration').get('value')
+                #Get list of legs for this direction request
+                legs = result.get('routes')[0].get('legs')
+
+                #Initialise the counter variables for the total distance and duration
+                distance = 0.0
+                duration = 0.0
+
+                #Cycle through each of the legs in this route
+                for leg in legs:
+                    #Adds distance of leg to values dictionary using value of distance from distance dictionary which is in the leg dictionary
+                    distance = distance + leg.get('distance').get('value')
+                    #Adds duration of leg to values dictionary using value of duration from duration dictionary which is in the leg dictionary
+                    duration = duration + leg.get('duration').get('value')
+
+                #Once we have cycled through all the legs of the route save the totals to the values dictionary
+                values[colnames[i][0]] = distance
+                values[colnames[i][1]] = duration
 
             #Add the status to the output
             values[colnames[i][2]] = status
@@ -202,8 +237,8 @@ def get_transit_details(start, end, api_key, departure_time = None):
 
     return values
 
-def get_direction_data(UniqueID, start, end, api_key, depature_time = None):
-    """ Gets direction information (see dictionary keys) for various transport methods between the supplied start and end postcodes. This method assumes no intermediat waypoints and uses the 1st returned route.
+def get_direction_data(UniqueID, start, end, api_key, depature_time = None, waypoints = None):
+    """ Gets direction information (see dictionary keys) for various transport methods between the supplied start and end postcodes, with optional waypoints.
 
     Arguements:
         UniqueID - String - The unique ID number for this postcode start-end pair
@@ -211,6 +246,7 @@ def get_direction_data(UniqueID, start, end, api_key, depature_time = None):
         end - String - Destination postcode
         api_key - String - The google_api key to be used for the request
         departure_time - Integer - The number of seconds since the epoch (midnight 01/01/1970) the default is the current time
+        waypoints - Iterable - Containing the intermediate waypoint postcodes
 
     Returns:
         A dictionary containing the origin and destination postcodes and the distance and duration for each mode of transport
@@ -232,7 +268,7 @@ def get_direction_data(UniqueID, start, end, api_key, depature_time = None):
     """
 
     #Get the indervidual dictionaries for the different transport modes
-    vals = get_dist_duration(UniqueID, start, end, api_key)
+    vals = get_dist_duration(UniqueID, start, end, api_key, waypoints)
     trans = get_transit_details(start, end, api_key, depature_time)
 
     #Combine them into one dictionary
@@ -277,24 +313,95 @@ def check_postcode(postcode):
     else:
         return False
 
-def get_directions(input_data, api_key, departure_time):
+def get_waypoint_list(input_data, NA_char = "99"):
+    """ Gets a list of valid postcode waypoints from the supplied input dictionary, ignoring any cell that uses the NA character.
 
-    #Get the directions results from the api
+    Arguments:
+        input_data - Dictionary - Data read from the input csv
+        NA_char - String - The character used to signal missing data in the input csv file
+
+    Returns:
+        A list of postcode strings taken from the input data
+    """
+
+    #Get the dictionary keys that contain the word Waypoint
+    waypoint_keys = list()
+    for key in input_data.keys():
+        if "Waypoint" in key:
+            waypoint_keys.append(key)
+
+    #If there are waypoints in the input data then process them, else return none
+    if waypoint_keys:
+        #Search through the waypoints and record those which are not the NA character
+        waypoints = list()
+        for waypoint in waypoint_keys:
+            wp = input_data.get(waypoint)
+            if wp != NA_char:
+                waypoints.append(wp)
+
+        #If there is 1 or more valid waypoint then return the list else return none
+        if waypoints:
+            return waypoints
+        else:
+            return None
+    else:
+        return None
+
+def get_directions(input_data, api_key, departure_time):
+    """ Checks all supplied postcodes and prevents a call to the api of any are invalid. Note that this method assumes a space in the middle of the postcode inorder to be valid.
+
+    Arguments:
+        input_data - Dictionary - read from the input data csv file
+        api_key - String - The Google API to make the request with
+        departure_time - Integer - The number of seconds since the epoch (midnight 01/01/1970) the default is the current time
+
+    Returns:
+        A dictionary containing the origin and destination postcodes and the distance and duration for each mode of transport
+        Dictionary keys:
+            "Origin Postcode",
+            "Destination Postcode",
+            "Driving Distance (m)",
+            "Driving Duration (sec)",
+            "Bicycling Distance (m)",
+            "Bicycling Duration (sec)",
+            "Walking Distance (m)",
+            "Walking Duration (sec)"
+            "Transit Distance (m)",
+            "Transit Duration (sec)",
+            "Number of Transit Nodes",
+            "Walking Distance to 1st stop (m)",
+            "Walking Distance from last stop (m)",
+            "Total Walking Distance (m)"
+    """
+    #Get the origin and destinations postcodes and the list of waypoints, if any
     origin = input_data["OriginPostcode"]
     destination = input_data["DestinationPostcode"]
+    waypoints = get_waypoint_list(input_data)
 
-    #Check the post codes and if both are fine submit to the api if not insert "Not Valid"
-    if check_postcode(origin) and check_postcode(destination):
-        result = get_direction_data(input_data["UniqueID"], origin, destination, api_key, departure_time)
+    #Check the post codes and if both are fine submit to the api if not insert "Not Valid" into the postcode status field
+    check_origin = check_postcode(origin)
+    check_destination = check_postcode(destination)
+
+    check_waypoints = True
+    if waypoints:
+        for waypoint in waypoints:
+            if not check_postcode(waypoint):
+                check_waypoints = False
+
+    if check_origin and check_destination and check_waypoints:
+        result = get_direction_data(input_data["UniqueID"], origin, destination, api_key, departure_time, waypoints)
         result["Postcode Status"] = "OK"
-    elif check_postcode(origin) and not check_postcode(destination):
+    elif check_origin and check_waypoints and not check_destination:
         result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Destination Invalid"}
         print "Error: Invalid Destination Postcode"
-    elif not check_postcode(origin) and check_postcode(destination):
+    elif not check_origin and check_destination and check_waypoints:
         result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Origin Invalid"}
         print "Error: Invalid Origin Postcode"
+    elif check_origin and check_destination and not check_waypoints:
+        result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"One or more waypoints invalid"}
+        print "Error: One or more invalid waypoint postcodes"
     else:
         result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Destination and Origin Invalid"}
-        print "Error: Invalid Origin and Destination Postcode"
+        print "Error: All postcodes are invalid"
 
     return result
