@@ -335,7 +335,7 @@ def get_waypoint_list(input_data, NA_char = "99"):
         #Search through the waypoints and record those which are not the NA character
         waypoints = list()
         for waypoint in waypoint_keys:
-            wp = input_data.get(waypoint)
+            wp = input_data.get(waypoint).strip()
             if wp != NA_char:
                 waypoints.append(wp)
 
@@ -374,8 +374,8 @@ def get_directions(input_data, api_key, departure_time):
             "Total Walking Distance (m)"
     """
     #Get the origin and destinations postcodes and the list of waypoints, if any
-    origin = input_data["OriginPostcode"]
-    destination = input_data["DestinationPostcode"]
+    origin = input_data["OriginPostcode"].strip()
+    destination = input_data["DestinationPostcode"].strip()
     waypoints = get_waypoint_list(input_data)
 
     #Check the post codes and if both are fine submit to the api if not insert "Not Valid" into the postcode status field
