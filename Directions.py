@@ -153,7 +153,7 @@ def get_departure_time(departure_time, weekday = 2):
 
     return dt_secs
 
-def get_transit_details(start, end, api_key, departure_time = None):
+def get_single_transit_journey(start, end, api_key, departure_time = None):
     """ Gets direction information (see dictionary keys) for public transport between the supplied start and end postcodes. This method assumes no intermediat waypoints and uses the 1st returned route.
 
     Arguements:
@@ -237,6 +237,82 @@ def get_transit_details(start, end, api_key, departure_time = None):
 
     return values
 
+def create_waypoint_pairs(start, end, waypoints):
+    """ Creates a list of postcode pairs starting with the supplied start and end postcode.
+
+    Arguments:
+        start - String - Origin postcode
+        end - String - Destination postcode
+        waypoints - Iterable - List of waypoint postcode strings
+
+    Returns:
+        A list of post code pairs
+    """
+    pairs = list()
+    n = len(waypoints) - 1
+    for i, wp in enumerate(waypoints):
+        if i == 0:
+            pairs.append((start, waypoints[i]))
+        else:
+            pairs.append((waypoints[i-1],waypoints[i]))
+
+    pairs.append((waypoints[n],end))
+
+    return pairs
+
+def get_transit_details(start, end, api_key, departure_time = None, waypoints = None):
+    """ Gets direction information (see dictionary keys) for public transport between the supplied start and end postcodes and will include intermediate waypoints if supplied.
+
+    Arguements:
+        start - String - Origin postcode
+        end - String - Destination postcode
+        api_key - String - The google_api key to be used for the request
+        departure_time - Integer - The number of seconds since the epoch (midnight 01/01/1970) the default is the current time
+        waypoints - Iterable - List of waypoint postcode strings
+
+    Returns:
+        A dictionary containing the origin and destination postcodes and the distance and duration for each mode of transport
+        Dictionary keys:
+            "Transit Distance (m)",
+            "Transit Duration (sec)",
+            "Number of Transit Nodes",
+            "Walking Distance to 1st stop (m)",
+            "Walking Distance from last stop (m)",
+            "Total Walking Distance (m)"
+    """
+    if waypoints:
+
+        print "Running Transit Waypoints:"
+
+        #Get a list of waypoint pairs
+        pairs = create_waypoint_pairs(start, end, waypoints)
+
+        #Set up the total dictionary and initialise the key value pairs
+        total = dict()
+        total["Transit Distance (m)"] = 0.0
+        total["Transit Duration (sec)"] = 0.0
+        total["Number of Transit Nodes"] = 0
+        total["Walking Distance to 1st stop (m)"] = 0.0
+        total["Walking Distance from last stop (m)"] = 0.0
+        total["Total Walking Distance (m)"] = 0.0
+
+        #Cycle through the waypoint pairs and add each value to the total
+        for pair in pairs:
+
+            pair_details = get_single_transit_journey(pair[0], pair[1], api_key, departure_time)
+
+            total["Transit Distance (m)"] = total["Transit Distance (m)"] + pair_details["Transit Distance (m)"]
+            total["Transit Duration (sec)"] = total["Transit Duration (sec)"] + pair_details["Transit Duration (sec)"]
+            total["Number of Transit Nodes"] = total["Number of Transit Nodes"] + pair_details["Number of Transit Nodes"]
+            total["Walking Distance to 1st stop (m)"] =  total["Walking Distance to 1st stop (m)"] + pair_details["Walking Distance to 1st stop (m)"]
+            total["Walking Distance from last stop (m)"] = total["Walking Distance from last stop (m)"] + pair_details["Walking Distance from last stop (m)"]
+            total["Total Walking Distance (m)"] = total["Total Walking Distance (m)"] + pair_details["Total Walking Distance (m)"]
+
+        return total
+
+    else:
+        return get_single_transit_journey(start, end, api_key, departure_time)
+
 def get_direction_data(UniqueID, start, end, api_key, depature_time = None, waypoints = None):
     """ Gets direction information (see dictionary keys) for various transport methods between the supplied start and end postcodes, with optional waypoints.
 
@@ -269,7 +345,7 @@ def get_direction_data(UniqueID, start, end, api_key, depature_time = None, wayp
 
     #Get the indervidual dictionaries for the different transport modes
     vals = get_dist_duration(UniqueID, start, end, api_key, waypoints)
-    trans = get_transit_details(start, end, api_key, depature_time)
+    trans = get_transit_details(start, end, api_key, depature_time, waypoints)
 
     #Combine them into one dictionary
     data = vals.copy()
