@@ -203,12 +203,12 @@ def get_single_transit_journey(start, end, api_key, departure_time = None):
             values["Transit Distance (m)"] = leg.get('distance').get('value')
             values["Transit Duration (sec)"] = leg.get('duration').get('value')
 
-
             #Get the steps for this transit direction - returns list of step objects
             steps = leg.get('steps')
 
             #Add the number of nodes in the transit directions by getting length of steps array
-            values["Number of Transit Nodes"] = len(steps)
+            nsteps = len(steps)
+            values["Number of Transit Nodes"] = nsteps
 
             #Get the walking distance for the 1st and last nodes. Uses -1 because zero indexed. If the 1st and last steps are not walking then add 0 to indicate negligble walking
             if steps[0].get('travel_mode') == 'WALKING':
@@ -216,8 +216,8 @@ def get_single_transit_journey(start, end, api_key, departure_time = None):
             else:
                 values["Walking Distance to 1st stop (m)"] = 0.0
 
-            if steps[len(steps)-1].get('travel_mode') == 'WALKING':
-                values["Walking Distance from last stop (m)"] = steps[len(steps)-1].get('distance').get('value')
+            if steps[nsteps-1].get('travel_mode') == 'WALKING':
+                values["Walking Distance from last stop (m)"] = steps[nsteps-1].get('distance').get('value')
             else:
                 values["Walking Distance from last stop (m)"] = 0.0
 
@@ -295,11 +295,15 @@ def get_transit_details(start, end, api_key, departure_time = None, waypoints = 
         total["Walking Distance to 1st stop (m)"] = 0.0
         total["Walking Distance from last stop (m)"] = 0.0
         total["Total Walking Distance (m)"] = 0.0
+        total["Transit Request Status"] = "OK"
 
         #Cycle through the waypoint pairs and add each value to the total
         for pair in pairs:
 
             pair_details = get_single_transit_journey(pair[0], pair[1], api_key, departure_time)
+
+            if pair_details["Transit Request Status"] != "OK":
+                total["Transit Request Status"] = pair_details["Transit Request Status"]
 
             total["Transit Distance (m)"] = total["Transit Distance (m)"] + pair_details["Transit Distance (m)"]
             total["Transit Duration (sec)"] = total["Transit Duration (sec)"] + pair_details["Transit Duration (sec)"]
