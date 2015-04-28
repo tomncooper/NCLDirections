@@ -26,7 +26,7 @@ total = len(inputs)
 with open(output_filename, 'wb') as csvfile:
 
     #Set the header list
-    fieldnames = ["UniqueID", "Origin Postcode", "Destination Postcode", "Driving Distance (m)","Driving Duration (sec)", "Driving request status", "Bicycling Distance (m)", "Bicycling Duration (sec)", "Bicycling request status", "Walking Distance (m)", "Walking Duration (sec)", "Walking request status", "Transit Request Status", "Transit Distance (m)", "Transit Duration (sec)", "Number of Transit Nodes", "Walking Distance to 1st stop (m)", "Walking Distance from last stop (m)", "Total Walking Distance (m)","Postcode Status"]
+    fieldnames = ["UniqueID", "Origin Postcode", "Destination Postcode", "Driving Distance (m)","Driving Duration (sec)", "Driving request status", "Bicycling Distance (m)", "Bicycling Duration (sec)", "Bicycling request status", "Walking Distance (m)", "Walking Duration (sec)", "Walking request status", "Transit Request Status", "Transit Distance (m)", "Transit Duration (sec)", "Number of Transit Nodes", "Walking Distance to 1st stop (m)", "Walking Distance from last stop (m)", "Total Walking Distance (m)","Postcode Status","Transit Lines","Transit Departure Time"]
 
     #Create the writer object
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, restval='NA')

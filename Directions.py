@@ -225,12 +225,26 @@ def get_single_transit_journey(start, end, api_key, departure_time = None):
             walking_dist = 0.0
 
             #For each step that Google labels as "WALKING" add the distance to the prior total walking from above.
+            print "Transit Lines:"
+            lines = ""
             for step in steps:
                 if step.get('travel_mode') == 'WALKING':
                     walking_dist = walking_dist + step.get('distance').get('value')
+                else:
+                    #Print out the name of the transit line to the console to help with verification
+                    line_name = step.get("transit_details").get("line").get("short_name")
+                    lines = lines + " " + line_name
+                    print line_name
+
 
             #Add the total walking distance
             values["Total Walking Distance (m)"] = walking_dist
+
+            #Add the list of tranist lines to the vaules dictionary
+            values["Transit Lines"] = lines
+
+            #Add the departure time used in the request
+            values["Transit Departure Time"] = datetime.datetime.fromtimestamp(departure_time)
 
     #Sleep for half a second to prevent overloading the API
     time.sleep(0.5)
@@ -296,9 +310,11 @@ def get_transit_details(start, end, api_key, departure_time = None, waypoints = 
         total["Walking Distance from last stop (m)"] = 0.0
         total["Total Walking Distance (m)"] = 0.0
         total["Transit Request Status"] = "OK"
+        total["Transit Lines"] = ""
+        total["Transit Departure Time"] = datetime.datetime.fromtimestamp(departure_time)
 
         #Cycle through the waypoint pairs and add each value to the total
-        for pair in pairs:
+        for i, pair in enumerate(pairs):
 
             pair_details = get_single_transit_journey(pair[0], pair[1], api_key, departure_time)
 
@@ -311,9 +327,9 @@ def get_transit_details(start, end, api_key, departure_time = None, waypoints = 
             total["Walking Distance to 1st stop (m)"] =  total["Walking Distance to 1st stop (m)"] + pair_details["Walking Distance to 1st stop (m)"]
             total["Walking Distance from last stop (m)"] = total["Walking Distance from last stop (m)"] + pair_details["Walking Distance from last stop (m)"]
             total["Total Walking Distance (m)"] = total["Total Walking Distance (m)"] + pair_details["Total Walking Distance (m)"]
+            total["Transit Lines"] = total["Transit Lines"] + " Waypoint {}: ".format(i+1) + pair_details["Transit Lines"]
 
         return total
-
     else:
         return get_single_transit_journey(start, end, api_key, departure_time)
 
