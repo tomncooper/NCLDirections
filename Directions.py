@@ -505,11 +505,11 @@ def get_directions(input_data, api_key, departure_time):
 
     return result
 
-def reverse_geocode(latlongs, api_key):
-    """ Accepts a list of (latitude, longitude) tuples and reverse geocodes them into Post Codes.
+def reverse_geocode(latlong, api_key):
+    """ Accepts a (latitude, longitude) tuple and reverse geocodes it into Post Codes.
 
     Arguments:
-        latlongs - List of tuples - List of latitude and longitude coordinates to be converted to PostCodes
+        latlongs - Tuple - latitude and longitude coordinates to be converted to a PostCode
         api_key - String - The google_api key to be used for the request
 
     Returns:
@@ -518,38 +518,36 @@ def reverse_geocode(latlongs, api_key):
 
     postcodes = list()
 
-    for latlong in latlongs:
+    latitude = latlong[0]
+    longitude = latlong[1]
 
-        latitude = latlong[0]
-        longitude = latlong[1]
+    #Make the request to the Google GeoCoding API
+    r = requests.get("https://maps.googleapis.com/maps/api/geocode/json?latlng={},{}&result_type=postal_code&key={}".format(latitude,longitude,api_key))
 
-        #Make the request to the Google GeoCoding API
-        r = requests.get("https://maps.googleapis.com/maps/api/geocode/json?latlng={},{}&result_type=postal_code&key={}".format(latitude,longitude,api_key))
+    #If the request is not successful print an error and do no further processing for this record
+    if r.status_code != 200:
+        print "Request network error"
+        postcodes.append("Request Error")
+    else:
+        #For every request there is an associated status - turn the returned JSON string into a dictionary and pull out the list of results
+        results = r.json().get("results")
 
-        #If the request is not successful print an error and do no further processing for this record
-        if r.status_code != 200:
-            print "Request network error"
-            postcodes.append("Request Error")
-        else:
-            #For every request there is an associated status - turn the returned JSON string into a dictionary and pull out the list of results
-            results = r.json().get("results")
+        #Cycle through the list of result json objects
+        for result in results:
 
-            #Cycle through the list of result json objects
-            for result in results:
+            #Cycle through the list of Address component objects
+            for component in result.get("address_components"):
 
-                #Cycle through the list of Address component objects
-                for component in result.get("address_components"):
+                #For each component pull out the list of types that describe this component
+                for component_type in component.get("types"):
 
-                    #For each component pull out the list of types that describe this component
-                    for component_type in component.get("types"):
+                    #If any of this component's types match the postal_code type then save the short_name value of this component to the post codes list
+                    if component_type == "postal_code":
+                        pc = component.get("short_name")
 
-                        #If any of this component's types match the postal_code type then save the short_name value of this component to the post codes list
-                        if component_type == "postal_code":
-                            pc = component.get("short_name")
-
-                            #Check if this a valid length post code
-                            if check_postcode(pc):
-                                postcodes.append(pc)
+                        #Check if this a valid length post code
+                        if check_postcode(pc):
+                            postcodes.append(pc)
 
 
     return postcodes
