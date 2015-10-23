@@ -491,11 +491,11 @@ def get_directions(input_data, api_key, departure_time):
         result = get_direction_data(input_data["UniqueID"], origin, destination, api_key, departure_time, waypoints)
         result["Postcode Status"] = "OK"
     elif check_origin and check_waypoints and not check_destination:
-        result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Destination Invalid"}
-        print "Error: Invalid Destination Postcode"
+        result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Invalid Destination Postcode: '{}'".format(destination)}
+        print "Error: Invalid Destination Postcode: '{}'".format(destination)
     elif not check_origin and check_destination and check_waypoints:
-        result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Origin Invalid"}
-        print "Error: Invalid Origin Postcode"
+        result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"Invalid Origin Postcode: '{}'".format(origin)}
+        print "Error: Invalid Origin Postcode: '{}'".format(origin)
     elif check_origin and check_destination and not check_waypoints:
         result = {"UniqueID":input_data["UniqueID"], "Origin Postcode":origin, "Destination Postcode":destination, "Postcode Status":"One or more waypoints invalid"}
         print "Error: One or more invalid waypoint postcodes"
