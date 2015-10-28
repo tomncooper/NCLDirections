@@ -542,11 +542,6 @@ def reverse_geocode(latlong, api_key):
 
                     #If any of this component's types match the postal_code type then save the short_name value of this component to the post codes list
                     if component_type == "postal_code":
-                        pc = component.get("short_name")
-
-                        #Check if this a valid length post code
-                        if check_postcode(pc):
-                            postcodes.append(pc)
-
+                        postcodes.append(component.get("short_name"))
 
     return postcodes
