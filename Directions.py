@@ -231,14 +231,13 @@ def get_single_transit_journey(start, end, api_key, departure_time = None):
                 if step.get('travel_mode') == 'WALKING':
                     walking_dist = walking_dist + step.get('distance').get('value')
                 else:
-                    #Print out the name of the transit line to the console to help with verification
-                    line_name = step.get("transit_details").get("line").get("short_name")
-                    if line_name:
+                    #Print out the name of the transit line to the console to help with verification.
+                    try:
+                        line_name = step.get("transit_details").get("line").get("short_name")
                         lines = lines + " " + line_name
                         print line_name
-                    else:
+                    except AttributeError:
                         print "Error: no transit line name found"
-
 
             #Add the total walking distance
             values["Total Walking Distance (m)"] = walking_dist
