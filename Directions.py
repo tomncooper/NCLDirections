@@ -236,7 +236,7 @@ def get_single_transit_journey(start, end, api_key, departure_time = None):
                         line_name = step.get("transit_details").get("line").get("short_name")
                         lines = lines + " " + line_name
                         print line_name
-                    except AttributeError:
+                    except (AttributeError, TypeError):
                         print "Error: no transit line name found"
 
             #Add the total walking distance
@@ -505,7 +505,7 @@ def get_directions(input_data, api_key, departure_time):
     return result
 
 def reverse_geocode(latlong, api_key):
-    """ Accepts a (latitude, longitude) tuple and reverse geocodes it into Post Codes.
+    """ Accepts a (latitude, longitude) tuple and reverse geocodes it into postal codes. This may include partial postcodes (eg NE6) as well as full postal codes.
 
     Arguments:
         latlongs - Tuple - latitude and longitude coordinates to be converted to a PostCode
